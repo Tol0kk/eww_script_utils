@@ -1,14 +1,16 @@
+#![allow(dead_code)]
+
 use std::error::Error;
 
 use clap::Subcommand;
-use ::hyprland::data::Workspace;
+mod utils;
 
 #[derive(Subcommand)]
 enum Commands {
     #[command(subcommand)]
-    Hyprland,
+    Hyprland(HyprlandCommand),
     #[command(subcommand)]
-    Network,
+    Network(NetworkCommand),
     // TODO
     Volume,
     // TODO

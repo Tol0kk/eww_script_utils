@@ -24,3 +24,4 @@ pub(crate) async fn send_notification(connection: Connection) -> Result<(), Box<
     dbg!(reply);
     Ok(())
 }
+

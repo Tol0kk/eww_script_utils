@@ -1,5 +1,4 @@
 use hyprland::{
-    ctl::switch_xkb_layout,
     data::{Devices, Workspace, Workspaces},
     event_listener::EventListener,
     shared::{HyprData, HyprDataActive},
