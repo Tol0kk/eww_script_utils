@@ -276,7 +276,7 @@ impl Device<'_> {
         }
     }
 
-    pub async fn get_device_data<'a>(&self) -> Result<(&'a str, String, String, String), Box<dyn Error>> {
+    pub async fn get_device_data<'a>(&self) -> Result<(&'a str, u32, u8, String), Box<dyn Error>> {
         let (kind, frequency, signal_strength, ssid) = match self {
             Device::WirelessDevice(x) => {
                 let access_point = x.get_active_access_point().await?;
@@ -285,9 +285,9 @@ impl Device<'_> {
                 let signal_strength = access_point.get_strength().await?;
                 let ssid = access_point.get_ssid().await?;
     
-                ("wireless", frequency.to_string(), signal_strength.to_string(), ssid)
+                ("wireless", frequency, signal_strength, ssid)
             }
-            Device::WiredDevice(_) => ("wired","".to_string(), "".to_string(), "".to_string()),
+            Device::WiredDevice(_) => ("wired",0, 0, "".to_string()),
         };
         Ok((kind, frequency, signal_strength, ssid))
     }
