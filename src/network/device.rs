@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use std::{error::Error, fmt::Debug};
 use zbus::{Connection, Proxy};
 use zvariant::{OwnedObjectPath, OwnedValue};

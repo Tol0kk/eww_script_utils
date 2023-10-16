@@ -1,13 +1,12 @@
-use serde::Serialize;
-use std::error::Error;
-
 use super::{
     active_connection::ActiveConnection,
     device::{self, Device},
+    ping::is_connected_to_internet,
 };
-use zbus;
+use std::error::Error;
 use zbus::dbus_proxy;
 use zbus::Connection;
+use zbus::{self, PropertyStream};
 use zvariant::{OwnedObjectPath, OwnedValue};
 
 #[dbus_proxy(
@@ -99,5 +98,75 @@ impl NetworkManager<'_> {
             connections.push(ActiveConnection::new(connection_path, &self.connection).await?)
         }
         Ok(connections)
+    }
+    pub async fn get_icon_path(&self, signal_strength: u8) -> Result<String, Box<dyn Error>> {
+        let icon = NetworkState::new(
+            self.get_state().await?,
+            signal_strength,
+            is_connected_to_internet().await,
+        );
+        Ok(icon.path())
+    }
+    pub async fn receive_property_changed(&self) -> PropertyStream<NMState> {
+        self.proxy.receive_property_changed("State").await
+    }
+}
+
+pub enum NetworkState {
+    Alseep,
+    Disconnected,
+    /// GIF
+    Connecting,
+    Disconnecting,
+    Connected(u8),
+    ConnectedGlobal(u8),
+}
+impl NetworkState {
+    pub fn new(state: NMState, signal_strength: u8, is_connected: bool) -> NetworkState {
+        match state {
+            NMState::Unknow | NMState::Asleep => NetworkState::Alseep,
+            NMState::Connecting => NetworkState::Connecting,
+            NMState::Disconnecting => NetworkState::Disconnecting,
+            NMState::ConnectedGlobal | NMState::ConnectedSite | NMState::ConnectedLocal => {
+                match is_connected {
+                    true => NetworkState::ConnectedGlobal(signal_strength),
+                    false => NetworkState::Connected(signal_strength),
+                }
+            }
+            NMState::Disconnected => NetworkState::Disconnected,
+        }
+    }
+    pub fn path(&self) -> String {
+        match self {
+            NetworkState::Alseep => "/image/Asleep.svg",
+            NetworkState::Disconnected => "/image/Disconnected.svg",
+            NetworkState::Connecting => "/image/Connecting.gif",
+            NetworkState::Disconnecting => "/image/Disconnecting.svg",
+            NetworkState::Connected(x) => match x {
+                x if *x < 25 => "/image/Connected-1.svg",
+                x if 25 <= *x && *x < 50 => "/image/Connected-2.svg",
+                x if 50 <= *x && *x < 75 => "/image/Connected-3.svg",
+                x if 75 <= *x && *x <= 100 => "/image/Connected-4.svg",
+                _ => panic!("Can't have a signal strengh over 100"),
+            },
+            NetworkState::ConnectedGlobal(x) => match x {
+                x if *x < 25 => "/image/ConnectedGlobal-1.svg",
+                x if 25 <= *x && *x < 50 => "/image/ConnectedGlobal-2.svg",
+                x if 50 <= *x && *x < 75 => "/image/ConnectedGlobal-3.svg",
+                x if 75 <= *x && *x <= 100 => "/image/ConnectedGlobal-4.svg",
+                _ => panic!("Can't have a signal strengh over 100"),
+            },
+        }
+        .to_string()
+    }
+    pub fn state(&self) -> String {
+        match self {
+            NetworkState::Alseep => "Asleep",
+            NetworkState::Disconnected => "Disconnected",
+            NetworkState::Connecting => "Connecting",
+            NetworkState::Disconnecting => "Disconnecting",
+            NetworkState::Connected(_) => "ConnectedLocal",
+            NetworkState::ConnectedGlobal(_) => "ConnectedGlobal",
+        }.to_string()
     }
 }
