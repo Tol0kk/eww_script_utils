@@ -1,9 +1,8 @@
 use super::{
     active_connection::ActiveConnection,
     device::{self, Device},
-    ping::is_connected_to_internet,
 };
-use std::error::Error;
+use std::{error::Error, fmt::Display};
 use zbus::dbus_proxy;
 use zbus::Connection;
 use zbus::{self, PropertyStream};
@@ -32,7 +31,7 @@ pub trait NetworkManager {
     fn active_connections(&self) -> zbus::Result<Vec<OwnedObjectPath>>;
 }
 
-#[derive(Debug, OwnedValue)]
+#[derive(Debug, OwnedValue, Clone, Copy, PartialEq, Eq)]
 pub enum NMState {
     Unknow = 0,
     Asleep = 10,
@@ -44,8 +43,14 @@ pub enum NMState {
     ConnectedGlobal = 70,
 }
 
+impl Display for NMState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 pub struct NetworkManager<'a> {
-    proxy: NetworkManagerProxy<'a>,
+    pub(crate) proxy: NetworkManagerProxy<'a>,
     connection: &'a Connection,
 }
 
@@ -99,17 +104,27 @@ impl NetworkManager<'_> {
         }
         Ok(connections)
     }
-    pub async fn get_icon_path(&self, signal_strength: u8) -> Result<String, Box<dyn Error>> {
-        let icon = NetworkState::new(
-            self.get_state().await?,
-            signal_strength,
-            is_connected_to_internet().await,
-        );
-        Ok(icon.path())
+    // pub async fn get_icon_path(&self, signal_strength: u8) -> Result<String, Box<dyn Error>> {
+    //     let icon = NetworkState::new(
+    //         self.get_state().await?,
+    //         signal_strength,
+    //         is_connected_to_internet().await,
+    //     );
+    //     Ok(icon_path() )
+
+    // }
+    pub async fn receive_property_changed(
+        &self,
+    ) -> Result<PropertyStream<NMState>, Box<dyn Error>> {
+        // let receive_state_changed = self.proxy.receive_state_changed();
+        // let mut b = receive_state_changed.boxed();
+        // let c = b.next().await.ok_or("no prp")?;
+        // let d = c.get().await?;
+        todo!()
     }
-    pub async fn receive_property_changed(&self) -> PropertyStream<NMState> {
-        self.proxy.receive_property_changed("State").await
-    }
+}
+pub fn icon_path(state: NMState, global_conn: bool, signal_strength: u8) -> String {
+    NetworkState::new(state, signal_strength, global_conn).path()
 }
 
 pub enum NetworkState {
@@ -158,15 +173,5 @@ impl NetworkState {
             },
         }
         .to_string()
-    }
-    pub fn state(&self) -> String {
-        match self {
-            NetworkState::Alseep => "Asleep",
-            NetworkState::Disconnected => "Disconnected",
-            NetworkState::Connecting => "Connecting",
-            NetworkState::Disconnecting => "Disconnecting",
-            NetworkState::Connected(_) => "ConnectedLocal",
-            NetworkState::ConnectedGlobal(_) => "ConnectedGlobal",
-        }.to_string()
     }
 }

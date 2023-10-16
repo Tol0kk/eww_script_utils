@@ -31,6 +31,7 @@ enum NetworkCommand {
     Info,
     List,
     Connect,
+    Test,
 }
 
 mod hyprland;
@@ -50,6 +51,7 @@ async fn main() ->  Result<(), Box<dyn Error>> {
         },
         Some(("network", subcommand)) => match subcommand.subcommand() {
             Some(("info",_)) => network::info().await?,
+            Some(("test",_)) => network::test().await?,
             _ => ()
         },
         _ => {}
